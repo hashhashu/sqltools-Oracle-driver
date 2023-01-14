@@ -2,7 +2,7 @@
   "name": "sqltools-oracle-driver",
   "displayName": "SQLTools Oracle Driver",
   "description": "SQLTools driver for Oracle",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "engines": {
     "vscode": "^1.42.0"
   },
