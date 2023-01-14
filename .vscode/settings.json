@@ -1,0 +1,24 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 1521,
+            "driver": "Oracle",
+            "name": "ddd",
+            "connectString": "ora11g",
+            "username": "HSTA4",
+            "password": "HSTA4"
+        },
+        {
+            "previewLimit": 50,
+            "server": "192.168.41.142",
+            "port": 1521,
+            "driver": "Oracle",
+            "name": "DDD",
+            "database": "ora11g",
+            "username": "HSTA4",
+            "password": "HSTA4"
+        }
+    ]
+}

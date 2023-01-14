@@ -1,0 +1,4 @@
+{
+  "ui:order": ["connectionMethod", "server", "port", "database", "connectString", "username", "usePassword","password"],
+  "password": { "ui:widget": "password" }
+}

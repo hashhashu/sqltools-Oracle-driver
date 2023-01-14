@@ -1,0 +1,75 @@
+{
+  "name": "sqltools-oracle-driver",
+  "displayName": "SQLTools Oracle Driver",
+  "description": "SQLTools driver for Oracle",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.42.0"
+  },
+  "icon": "icon.png",
+  "publisher": "hurly",
+  "author": {
+    "name": "hurly",
+    "email": "zhenhuye@qq.com"
+  },
+  "homepage": "https://github.com/hashhashu/sqltools-Oracle-driver#readme",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hashhashu/sqltools-Oracle-driver"
+  },
+  "bugs": {
+    "url": "https://github.com/hashhashu/sqltools-Oracle-driver/issues"
+  },
+  "scripts": {
+    "clean": "rimraf -rf out *.vsix",
+    "esbuild:ext": "esbuild ./src/extension.ts --bundle --external:vscode --platform=node --tsconfig=./tsconfig.json --log-level=info --color=true --format=cjs --target=es2017 --minify --outfile=./out/extension.js",
+    "esbuild:ls": "esbuild ./src/ls/plugin.ts --bundle --external:vscode --platform=node --tsconfig=./tsconfig.json --log-level=info --color=true --format=cjs --target=es2017 --minify --outfile=./out/ls/plugin.js",
+    "esbuild": "yarn esbuild:ext && yarn esbuild:ls",
+    "copy": "copy package.json ./out/ls",
+    "prepackage": "yarn install && yarn clean && yarn esbuild && yarn copy",
+    "package": "vsce package --yarn --allow-star-activation",
+    "publish": "vsce publish --yarn --allow-star-activation",
+    "test-compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "keywords": [
+    "oracle",
+    "sqltools-driver"
+  ],
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Formatters",
+    "Other"
+  ],
+  "extensionDependencies": [
+    "mtxr.sqltools"
+  ],
+  "activationEvents": [
+    "*",
+    "onLanguage:sql",
+    "onCommand:sqltools.*"
+  ],
+  "main": "./out/extension.js",
+  "dependencies": {
+    "@sqltools/base-driver": "latest",
+    "@sqltools/types": "latest",
+    "oracledb": "D:\\extra\\oracledb-src-5.5.0.tgz",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@babel/preset-env": "^7.20.2",
+    "@types/node": "^18.11.17",
+    "@types/vscode": "^1.42.0",
+    "@typescript-eslint/eslint-plugin": "^5.47.1",
+    "@typescript-eslint/parser": "^5.45.0",
+    "esbuild": "^0.16.12",
+    "eslint": "^8.29.0",
+    "eslint-config-prettier": "^8.5.0",
+    "prettier": "^2.7.1",
+    "rimraf": "^3.0.2",
+    "typescript": "^4.9.4",
+    "vsce": "^2.15.0"
+  }
+}
