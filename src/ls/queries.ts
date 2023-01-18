@@ -17,10 +17,10 @@ select t.COLUMN_NAME as "label",
        t.TABLE_NAME as "table",
        t.DATA_TYPE as "dataType",
        t.DATA_LENGTH as "size",
-       user as "schema",
+       t.owner as "schema",
        SYS_CONTEXT ('USERENV', 'DB_NAME') as "database",
        t.DATA_DEFAULT as "defaultValue",
-       user as "catalog",
+       t.owner as "catalog",
        t.NULLABLE    as "isNullable",
        upper(t.DATA_TYPE || 
          decode(t.DATA_LENGTH,null,'',
@@ -28,14 +28,17 @@ select t.COLUMN_NAME as "label",
                                           ',' || t.DATA_PRECISION) || ')')) as "detail",
        decode(pri.constraint_type,'P',1,0) as "isPk",
        decode(pri.constraint_type,'R',1,0) as "isFk"
-  from user_tab_columns t, (select ucc.table_name, ucc.column_name, uct.constraint_type 
-                              from user_cons_columns ucc, user_constraints uct
+  from all_tab_columns t, (select ucc.table_name, ucc.column_name, uct.constraint_type, uct.owner 
+                              from all_cons_columns ucc, all_constraints uct
                              where ucc.constraint_name = uct.constraint_name
+                               and ucc.owner = uct.owner
                                and uct.constraint_type in ('P','R')) pri
  where t.TABLE_NAME = '${p => escapeTableName(p)}'
    and t.TABLE_NAME = pri.table_name(+)
    and t.COLUMN_NAME = pri.column_name(+)
+   and t.owner = pri.owner(+)
  order by
+   decode(t.owner,user,0,1),
    t.TABLE_NAME, 
    t.COLUMN_ID
 `;
@@ -57,23 +60,25 @@ FROM ${p => escapeTableName(p.table)};
 const fetchTables: IBaseQueries['fetchTables'] = queryFactory`
 select t.table_name as "label",
        '${ContextValue.TABLE}' as "type",
-       user as "schema",
+       t.owner as "schema",
        SYS_CONTEXT ('USERENV', 'DB_NAME') as "database",
-       user as "catalog",
+       t.owner as "catalog",
        0 as "isView"
-  from user_tables t
+  from all_tables t
  order by
+ decode(t.owner,user,0,1),
  t.table_name
 `;
 const fetchViews: IBaseQueries['fetchTables'] = queryFactory`
 select t.view_name as "label",
        '${ContextValue.VIEW}' as "type",
-       user as "schema",
+       t.owner as "schema",
        SYS_CONTEXT ('USERENV', 'DB_NAME') as "database",
-       user as "catalog",
+       t.owner as "catalog",
        1 as "isView"
-  from user_views t
+  from all_views t
  order by
+ decode(t.owner,user,0,1),
  t.view_name
 `;
 
@@ -91,26 +96,28 @@ from(select t.label        "label",
                     '${ContextValue.VIEW}' as             type,
                     1 as                                  isView,
                     'view' as                             description,
-                    user as                            schema,
+                    t.owner as                            schema,
                     SYS_CONTEXT ('USERENV', 'DB_NAME') as database,
-                    user as catalog,
-                    user || '.' || t.view_name as      detail
-              from user_views t
+                    t.owner as catalog,
+                    t.owner || '.' || t.view_name as      detail
+              from all_views t
             union all
             select  t.table_name as                       label,
                     '${ContextValue.TABLE}' as            type,
                     0 as                                  isView,
                     'table' as                            description,
-                    user as                            schema,
+                    t.owner as                            schema,
                     SYS_CONTEXT ('USERENV', 'DB_NAME') as database,
-                    user as                               catalog,
-                    user || '.' || t.table_name as     detail
-              from user_tables t) t
+                    t.owner as                               catalog,
+                    t.owner || '.' || t.table_name as     detail
+              from all_tables t) t
     where 1 = 1
     ${p => p.search ? `AND (
-      lower(t.label) LIKE '%${p.search.toLowerCase()}%'
+      lower(t.label) LIKE '${p.search.toLowerCase()}%'
+      OR lower(t.schema || '.' || t.label) LIKE '${p.search.toLowerCase()}%'
     )` : ''}
   order by
+    decode(t.schema,user,0,1),
     t.label
   )t
   where rownum <= ${p => p.limit || 100}
@@ -123,9 +130,9 @@ select t.*
               t.TABLE_NAME as "table",
               t.DATA_TYPE as "dataType",
               t.DATA_LENGTH as "size",
-              user as "schema",
+              t.owner as "schema",
               SYS_CONTEXT ('USERENV', 'DB_NAME') as "database",
-              user as "catalog",
+              t.owner as "catalog",
               t.DATA_DEFAULT as "defaultValue",
               t.NULLABLE    as "isNullable",
               upper(t.DATA_TYPE || 
@@ -134,7 +141,7 @@ select t.*
                                                   ',' || t.DATA_PRECISION) || ')')) as "detail",
               0 as "isPk",
               0 as "isFk"
-         from user_tab_columns t
+         from all_tab_columns t
         where 1 = 1 
           ${p => p.tables.filter(t => !!t.label).length
           ? `AND LOWER(t.TABLE_NAME) IN (${p.tables.filter(t => !!t.label).map(t => `'${t.label}'`.toLowerCase()).join(', ')})`
@@ -142,15 +149,16 @@ select t.*
           }
          ${p => p.search
           ? `AND (
-          lower(t.TABLE_NAME || '.' || t.COLUMN_NAME) LIKE '%${p.search.toLowerCase()}%'
-          OR lower(user || '.' || t.TABLE_NAME) LIKE '%${p.search.toLowerCase()}%'
-          OR lower(t.COLUMN_NAME) LIKE '%${p.search.toLowerCase()}%'
+          lower(t.TABLE_NAME || '.' || t.COLUMN_NAME) LIKE '${p.search.toLowerCase()}%'
+          OR lower(t.owner || '.' || t.TABLE_NAME) LIKE '${p.search.toLowerCase()}%'
+          OR lower(t.COLUMN_NAME) LIKE '${p.search.toLowerCase()}%'
           )`
           : ''
           }
         order by
+        decode(t.owner,user,0,1),
         t.TABLE_NAME, 
-        t.COLUMN_NAME)t
+        t.COLUMN_ID)t
 where rownum <= ${p => p.limit || 1000}
 `;
 

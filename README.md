@@ -22,13 +22,21 @@ After installing the oracle Driver for SQLTools, you will be able to create conn
 ### Installation
 * From VS Code by searching SQLTools Oracle Driver
 * From [marketplace](https://marketplace.visualstudio.com/items?itemName=hurly.sqltools-oracle-driver)
-### 0.1.0
+### ChageLog
+#### 0.1.0
 * First working version
+#### 0.1.1
+* (tables explore and completion etc) not restrict in current user
+* fix the pool size in 4 for better performance
+* change the original match(%info%) with just(info%) to avoid too many matches
+* fix some issue 
+
 
 ### Feedback
 * If you have any questions, feel free to ask and I'll get back to you at the weekend.
 
 ### PLANS
+* add completion support for with style view(such as `with a as (select)`)
 * Add more functions to vscode sqltools
 
-Thanks to [vscode-sqltools](https://github.com/mtxr/vscode-sqltools), [node-oracledb](https://github.com/oracle/node-oracledb), [Older SQLTools oracle driver](https://github.com/mickeypearce/vscode-sqltools)
+Thanks to [vscode-sqltools](https://github.com/mtxr/vscode-sqltools), [node-oracledb](https://github.com/oracle/node-oracledb), [Older SQLTools oracle driver](https://github.com/mickeypearce/vscode-sqltools/tree/master/packages/drivers/oracle)

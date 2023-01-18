@@ -47,7 +47,10 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, any> 
     const pool = await this.lib.createPool({
       user: this.credentials.username,
       password: this.credentials.password,
-      connectString: this.credentials.connectString
+      connectString: this.credentials.connectString,
+      poolIncrement : 0,
+      poolMax       : 4,
+      poolMin       : 4
     });
 
     return new Promise<OracleDBLib.Pool>((resolve, reject) => {
@@ -78,32 +81,26 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, any> 
 
   private async runSingleQuery(query: string) {
     return new Promise<any[]>((resolve, reject) => {
+      let results = [];
       this.connection.then(async (pool) => {
         await pool.getConnection(async (err, conn) => {
-          if (err) return reject(err);
           try{
+            if (err) return reject(err);
             let binds = {};
             let options = {
               outFormat: this.lib.OUT_FORMAT_OBJECT,   // query result format
               dmlRowCounts: true,                      //the number of rows affected by each input row
             };
             // conn.execute(`ALTER SESSION SET NLS_NUMERIC_CHARACTERS = '.,'`);
-            const results = await conn.execute(query,binds,options);
-            await conn.close();
-            return resolve(results)
+            results = await conn.execute(query,binds,options);
           }catch(err){
             return reject(err)
           }finally {
             if (conn) {
-              try {
-                // Put the connection back in the pool
-                await conn.close();
-                return resolve([]);
-              } catch (err) {
-                return reject(err)
-              }
+              await conn.close();
             }
           }
+        return resolve(results)
         });
       })
     });
