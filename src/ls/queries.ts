@@ -83,15 +83,15 @@ select t.view_name as "label",
 `;
 
 const searchTables: IBaseQueries['searchTables'] = queryFactory`
-select t.*
-from(select t.label        "label",
-            t.type         "type",
-            t.isView       "isView",
-            t.description  "description",
-            t.schema       "schema",
-            t.database     "database",
-            t.catalog      "catalog",
-            t.detail       "detail" 
+select  t.label        "label",
+        t.type         "type",
+        t.isView       "isView",
+        t.description  "description",
+        t.schema       "schema",
+        t.database     "database",
+        t.catalog      "catalog",
+        t.detail       "detail"
+from( select t.*
        from(select  t.view_name as                        label,
                     '${ContextValue.VIEW}' as             type,
                     1 as                                  isView,
@@ -116,11 +116,12 @@ from(select t.label        "label",
       lower(t.label) LIKE '${p.search.toLowerCase()}%'
       OR lower(t.schema || '.' || t.label) LIKE '${p.search.toLowerCase()}%'
     )` : ''}
+  )t
+  where rownum <= ${p => p.limit || 100}
   order by
     decode(t.schema,user,0,1),
     t.label
-  )t
-  where rownum <= ${p => p.limit || 100}
+  
 
 `;
 const searchColumns: IBaseQueries['searchColumns'] = queryFactory`
