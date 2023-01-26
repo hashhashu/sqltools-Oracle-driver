@@ -79,58 +79,79 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, any> 
     });
   }
 
-  private async runSingleQuery(query: string) {
-    return new Promise<any[]>((resolve, reject) => {
-      let results = [];
-      this.connection.then(async (pool) => {
+  public query: (typeof AbstractDriver)['prototype']['query'] = async (query, opt = {}) => {
+    return await this.open().then(async (pool): Promise<NSDatabase.IResult[]> => {
+      const { requestId } = opt;
+      return new Promise(async (resolve, reject) => {
         await pool.getConnection(async (err, conn) => {
+          let currentQuery:string;
           try{
             if (err) return reject(err);
+            const parseQueries = parse(query.toString());
+            const queries = parseQueries.queries;
+            const isSelectQueries = parseQueries.isSelectQueries;
+            let resultsAgg: NSDatabase.IResult[] = [];
             let binds = {};
             let options = {
               outFormat: this.lib.OUT_FORMAT_OBJECT,   // query result format
               dmlRowCounts: true,                      //the number of rows affected by each input row
             };
             // conn.execute(`ALTER SESSION SET NLS_NUMERIC_CHARACTERS = '.,'`);
-            results = await conn.execute(query,binds,options);
+            let rowsAffectedAll: number = 0;
+            let selectQueryNum: number = 0;
+            const messages = [];
+            for (var i =0;i<queries.length;i++) {
+              let q = queries[i];
+              currentQuery = q;
+              if(isSelectQueries[i]){
+                selectQueryNum += 1;
+              }
+              const res: any = await conn.execute(q,binds,options) || [];
+              
+              if (res.rowsAffected && !isSelectQueries[i]) {
+                rowsAffectedAll += res.rowsAffected;
+              }
+              if(isSelectQueries[i]){
+                resultsAgg.push(<NSDatabase.IResult>{
+                  requestId,
+                  resultId: generateId(),
+                  connId: this.getId(),
+                  cols: (res.rows && res.rows.length>0) ? Object.keys(res.rows[0]) : [],
+                  messages,
+                  query: q,
+                  results: res.rows,
+                });
+              }
+            }
+            if(selectQueryNum < queries.length){
+              if(rowsAffectedAll>0){
+                messages.push(this.prepareMessage(`${rowsAffectedAll} rows were affected.`));
+              }
+              resultsAgg.push(<NSDatabase.IResult>{
+                requestId,
+                resultId: generateId(),
+                connId: this.getId(),
+                cols: ['result'],
+                messages,
+                query: 'summary',
+                results: [{'result':'executed success'}],
+              });
+            }
+            return resolve(resultsAgg);
           }catch(err){
-            return reject(err)
+            console.log(currentQuery);
+            console.log(err);
+            return reject(currentQuery + err);
           }finally {
             if (conn) {
               await conn.close();
             }
           }
-        return resolve(results)
         });
-      })
-    });
-  }
-
-  public query: (typeof AbstractDriver)['prototype']['query'] = async (query, opt = {}) => {
-    await this.open();
-    const { requestId } = opt;
-    const queries = parse(query.toString());
-    let resultsAgg: NSDatabase.IResult[] = [];
-    for (let q of queries) {
-      const res: any = (await this.runSingleQuery(q)) || [];
-      const messages = [];
-      if (res.rowsAffected) {
-        messages.push(this.prepareMessage(`${res.rowsAffected} rows were affected.`));
-      }
-      resultsAgg.push(<NSDatabase.IResult>{
-        requestId,
-        resultId: generateId(),
-        connId: this.getId(),
-        cols: (res.rows && res.rows.length>0) ? Object.keys(res.rows[0]) : [],
-        messages,
-        query: q,
-        results: res.rows,
       });
-    }
-    /**
-     * write the method to execute queries here!!
-     */
-    return resultsAgg;
+    }).catch((reason) => {
+      throw new Error(reason.message);
+    });
   }
 
   /** if you need a different way to test your connection, you can set it here.
@@ -183,11 +204,13 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, any> 
       case ContextValue.TABLE:
       case ContextValue.VIEW:
         return this.queryResults(this.queries.searchTables({ search })).then(r => r.map(t => {
+          // t.label = t.label.toLowerCase();
           t.isView = toBool(t.isView);
           return t;
         }));
       case ContextValue.COLUMN:
         return this.queryResults(this.queries.searchColumns({ search, ...extraParams })).then(r => r.map(c => {
+          // c.label = c.label.toLowerCase();
           c.isPk = toBool(c.isPk);
           c.isFk = toBool(c.isFk);
           return c;

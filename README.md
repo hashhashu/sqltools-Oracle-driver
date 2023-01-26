@@ -29,14 +29,28 @@ After installing the oracle Driver for SQLTools, you will be able to create conn
 * (tables explore and completion etc) not restrict in current user
 * fix the pool size in 4 for better performance
 * change the original match(%info%) with just(info%) to avoid too many matches
+#### 0.1.2
 * fix some issue 
    * in the searchTables query, move the `order by` sentence out for efficiency
-
+#### 0.1.3
+* fix the issue(#3) that can't commit;
+* add support for exec(**replace exec with call** before processing)
+* ignore spool command (**add -- before spool** before processing)
+* add better support for sentances splitting
+   * sentances should be separated with **/**
+      * begin with `declare` or `begin`
+      * begin with `create`
+         * followed by `procedure`,`function`,`trigger`
+   * others separated with **;**
+* add better support with (not select) sentances
+   * only a summary page to show the result instead of many pages
+* add support for showing error(you can see the error message in the **OUTPUT** of vscode)
 
 ### Feedback
 * If you have any questions, feel free to ask and I'll get back to you at the weekend.
 
 ### PLANS
+* add lowercase configuration for completion
 * add hover
 * add completion support for with style view(such as `with a as (select)`)
 * Add more functions to vscode sqltools
