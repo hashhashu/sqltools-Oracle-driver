@@ -7,8 +7,15 @@ import { v4 as generateId } from 'uuid';
 
 const toBool = (v: any) => v && (v.toString() === '1' || v.toString().toLowerCase() === 'true' || v.toString().toLowerCase() === 'yes');
 
+export interface PoolConfig{
+  // 
+  autoCommit?: boolean;
+  lowerCase?: boolean; //lowcase for completion
+  macroFile?: string; //file configured for macro substitution
+}
 
-export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, any> implements IConnectionDriver {
+
+export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolConfig> implements IConnectionDriver {
 
   /**
    * If you driver depends on node packages, list it below on `deps` prop.
@@ -22,6 +29,9 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, any> 
 
 
   queries = queries;
+  autoCommit = false;
+  lowerCase = false;
+  macroFile = '';
 
   /** if you need to require your lib in runtime and then
    * use `this.lib.methodName()` anywhere and vscode will take care of the dependencies
@@ -44,6 +54,18 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, any> 
         this.credentials.connectString = this.credentials.database;
       }
     }
+    if(this.credentials.oracleOptions){
+      if(this.credentials.oracleOptions.autoCommit){
+        this.autoCommit = this.credentials.oracleOptions.autoCommit;
+      }
+      if(this.credentials.oracleOptions.lowerCase){
+        this.lowerCase = this.credentials.oracleOptions.lowerCase;
+      }
+      if(this.credentials.oracleOptions.macroFile){
+        this.macroFile = this.credentials.oracleOptions.macroFile;
+      }
+    }
+    
     const pool = await this.lib.createPool({
       user: this.credentials.username,
       password: this.credentials.password,
@@ -95,6 +117,7 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, any> 
             let options = {
               outFormat: this.lib.OUT_FORMAT_OBJECT,   // query result format
               dmlRowCounts: true,                      //the number of rows affected by each input row
+              autoCommit: this.autoCommit   //control autocommit
             };
             // conn.execute(`ALTER SESSION SET NLS_NUMERIC_CHARACTERS = '.,'`);
             let rowsAffectedAll: number = 0;
@@ -127,14 +150,15 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, any> 
               if(rowsAffectedAll>0){
                 messages.push(this.prepareMessage(`${rowsAffectedAll} rows were affected.`));
               }
+              let executeTime = new Date();
               resultsAgg.push(<NSDatabase.IResult>{
                 requestId,
                 resultId: generateId(),
                 connId: this.getId(),
-                cols: ['result'],
+                cols: ['result', 'executeTime'],
                 messages,
                 query: 'summary',
-                results: [{'result':'executed success'}],
+                results: [{'result':rowsAffectedAll+' rows were affected','executeTime':executeTime.toLocaleTimeString()}],
               });
             }
             return resolve(resultsAgg);
@@ -204,13 +228,17 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, any> 
       case ContextValue.TABLE:
       case ContextValue.VIEW:
         return this.queryResults(this.queries.searchTables({ search })).then(r => r.map(t => {
-          // t.label = t.label.toLowerCase();
+          if(this.lowerCase){
+            t.label = t.label.toLowerCase();
+          }
           t.isView = toBool(t.isView);
           return t;
         }));
       case ContextValue.COLUMN:
         return this.queryResults(this.queries.searchColumns({ search, ...extraParams })).then(r => r.map(c => {
-          // c.label = c.label.toLowerCase();
+          if(this.lowerCase){
+            c.label = c.label.toLowerCase();
+          }
           c.isPk = toBool(c.isPk);
           c.isFk = toBool(c.isFk);
           return c;

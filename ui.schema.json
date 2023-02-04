@@ -1,4 +1,4 @@
 {
-  "ui:order": ["connectionMethod", "server", "port", "database", "connectString", "username", "usePassword","password"],
+  "ui:order": ["connectionMethod", "server", "port", "database", "connectString", "username", "usePassword","password","oracleOptions"],
   "password": { "ui:widget": "password" }
 }

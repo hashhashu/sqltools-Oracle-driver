@@ -1,9 +1,9 @@
 /**
  * copied from https://github.com/TeamSQL/SQL-Statement-Parser/blob/dev/src/index.ts
  * minor improvements
- * adapted for oracle and add other things
+ * adapted for oracle and add other things by hurly
  */
-
+import * as fs from 'fs';
 class QueryParser {
   static parse(query: string, driver: 'pg' | 'mysql' | 'mssql' | 'cql' | 'oracle' = 'oracle'): {queries:  Array<string>,
     isSelectQueries: Array<boolean>}{
@@ -12,6 +12,13 @@ class QueryParser {
     const isSelectQueries: Array<boolean> = [];
     const flag = true;
     let restOfQuery;
+    // macro substitution
+    // if (macroFile!='' && fs.existsSync(macroFile)){
+    //  let userBugsJson = JSON.parse(fs.readFileSync(macroFile).toString());
+    //  //获取Json里key为data的数据
+    //  const data = userBugsJson['data'];
+    //  return data;
+    // }
     // ignore spool
     query = query.replace(/^\s*spool\s+?/gim,'--spool ');
     // replace exec with call
@@ -23,7 +30,8 @@ class QueryParser {
       const statementAndRest = QueryParser.getStatements(restOfQuery, driver, delimiter);
 
       const statement = statementAndRest[0];
-      if (statement != null && statement.trim() != '' && statement.trim() != '/') {
+      let allComment = (statementAndRest[3] == "true")?true:false;
+      if (statement != null && statement.trim() != '' && !allComment) {
         queries.push(statement);
         if(statementAndRest[2] == "true"){
           isSelectQueries.push(true);
@@ -71,8 +79,8 @@ class QueryParser {
     let isFirst: boolean = true;
 
     const charArray: Array<string> = Array.from(query);
-    let arrayInclude = ["procedure","function","trigger"];
-    let arrayExclude = ["database","tablespace","user","table","index","sequence","view","package"]; //for efficiency
+    let arrayInclude = ["procedure","function","trigger","package"];
+    let arrayExclude = ["database","tablespace","user","table","index","sequence","view"]; //for efficiency
     let isSelectQuery = false;
 
     let resultQueries: Array<string> = [];
@@ -126,8 +134,8 @@ class QueryParser {
       if(/\s/.test(char)){
         continue;
       }
-      // fetch sql type
-      if(!isInComment && isFirst){
+      // fetch sql type('/' or ';' should not be treated as sql type)
+      if(!isInComment && isFirst && (char!='/' && char!=';')){
         let word = this.getWord(charArray, index);
         if(word == "create"){
           isInCreate = true;
@@ -135,7 +143,7 @@ class QueryParser {
         else if(word == "declare" || word == "begin" ){
           delimiter = '/';
         }
-        else if(word == "select"){
+        else if(word == "select" || word == "with"){
           isSelectQuery = true;
         }
         isFirst = false;
@@ -190,12 +198,9 @@ class QueryParser {
       }
       resultQueries.push(query, null);
     }
-    if(isSelectQuery){
-      resultQueries.push('true');
-    }
-    else{
-      resultQueries.push('false');
-    }
+    resultQueries.push(isSelectQuery?"true":"false");
+    // is all comment
+    resultQueries.push(isFirst?"true":"false");
 
     return resultQueries;
   }

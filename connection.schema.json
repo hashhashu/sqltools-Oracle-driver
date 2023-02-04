@@ -43,6 +43,22 @@
         "Connection String"
       ],
       "default": "Server and Port"
+    },
+    "oracleOptions": {
+      "title": "Oracle driver specific options",
+      "type": "object",
+      "properties": {
+        "autoCommit": {
+            "type": "boolean",
+            "default": false,
+            "title": "autoCommit"
+        },
+        "lowerCase": {
+            "type": "boolean",
+            "default": false,
+            "title": "lowerCase for completion"
+        }
+      }
     }
   },
   "dependencies": {
