@@ -26,19 +26,11 @@ select t.COLUMN_NAME as "label",
          decode(t.DATA_LENGTH,null,'',
            '(' || t.DATA_LENGTH || decode(t.DATA_PRECISION,null,'', 
                                           ',' || t.DATA_PRECISION) || ')')) as "detail",
-       decode(pri.constraint_type,'P',1,0) as "isPk",
-       decode(pri.constraint_type,'R',1,0) as "isFk"
-  from all_tab_columns t, (select ucc.table_name, ucc.column_name, uct.constraint_type, uct.owner 
-                              from all_cons_columns ucc, all_constraints uct
-                             where ucc.constraint_name = uct.constraint_name
-                               and ucc.owner = uct.owner
-                               and uct.constraint_type in ('P','R')) pri
+       0 as "isPk",
+       0 as "isFk"
+  from all_tab_columns t 
  where t.TABLE_NAME = '${p => escapeTableName(p)}'
-   and t.TABLE_NAME = pri.table_name(+)
-   and t.COLUMN_NAME = pri.column_name(+)
-   and t.owner = pri.owner(+)
  order by
-   decode(t.owner,user,0,1),
    t.TABLE_NAME, 
    t.COLUMN_ID
 `;
@@ -52,7 +44,7 @@ SELECT * FROM
 `;
 
 const countRecords: IBaseQueries['countRecords'] = queryFactory`
-SELECT count(1) AS total
+SELECT count(1) AS "total"
 FROM ${p => escapeTableName(p.table)};
 `;
 
@@ -92,7 +84,19 @@ select  t.label        "label",
         t.catalog      "catalog",
         t.detail       "detail"
 from( select t.*
-       from(select  t.view_name as                        label,
+       from(
+            select  t.table_name as                       label,
+                    '${ContextValue.TABLE}' as            type,
+                    0 as                                  isView,
+                    'table' as                            description,
+                    t.owner as                            schema,
+                    SYS_CONTEXT ('USERENV', 'DB_NAME') as database,
+                    t.owner as                               catalog,
+                    t.owner || '.' || t.table_name as     detail
+              from all_tables t
+              where t.owner = user
+            union all
+            select  t.view_name as                        label,
                     '${ContextValue.VIEW}' as             type,
                     1 as                                  isView,
                     'view' as                             description,
@@ -101,6 +105,7 @@ from( select t.*
                     t.owner as catalog,
                     t.owner || '.' || t.view_name as      detail
               from all_views t
+              where t.owner = user
             union all
             select  t.table_name as                       label,
                     '${ContextValue.TABLE}' as            type,
@@ -110,18 +115,27 @@ from( select t.*
                     SYS_CONTEXT ('USERENV', 'DB_NAME') as database,
                     t.owner as                               catalog,
                     t.owner || '.' || t.table_name as     detail
-              from all_tables t) t
+              from all_tables t
+              where t.owner <> user
+            union all
+            select  t.view_name as                        label,
+                    '${ContextValue.VIEW}' as             type,
+                    1 as                                  isView,
+                    'view' as                             description,
+                    t.owner as                            schema,
+                    SYS_CONTEXT ('USERENV', 'DB_NAME') as database,
+                    t.owner as catalog,
+                    t.owner || '.' || t.view_name as      detail
+              from all_views t
+              where t.owner <> user
+            ) t
     where 1 = 1
     ${p => p.search ? `AND (
       lower(t.label) LIKE '${p.search.toLowerCase()}%'
       OR lower(t.schema || '.' || t.label) LIKE '${p.search.toLowerCase()}%'
     )` : ''}
   )t
-  where rownum <= ${p => p.limit || 100}
-  order by
-    decode(t.schema,user,0,1),
-    t.label
-  
+  where rownum <= ${p => p.limit || 1500}
 
 `;
 const searchColumns: IBaseQueries['searchColumns'] = queryFactory`
@@ -160,7 +174,7 @@ select t.*
         decode(t.owner,user,0,1),
         t.TABLE_NAME, 
         t.COLUMN_ID)t
-where rownum <= ${p => p.limit || 1000}
+where rownum <= ${p => p.limit || 1500}
 `;
 
 export default {

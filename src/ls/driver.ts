@@ -4,6 +4,8 @@ import queries from './queries';
 import { IConnectionDriver, MConnectionExplorer, NSDatabase, ContextValue, Arg0 } from '@sqltools/types';
 import parse from './parser';
 import { v4 as generateId } from 'uuid';
+import {Oracle_Diagnosis_Path} from '../constants';
+import fs from 'fs';
 
 const toBool = (v: any) => v && (v.toString() === '1' || v.toString().toLowerCase() === 'true' || v.toString().toLowerCase() === 'yes');
 
@@ -107,12 +109,16 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
       return new Promise(async (resolve, reject) => {
         await pool.getConnection(async (err, conn) => {
           let currentQuery:string;
+          let resultsAgg: NSDatabase.IResult[] = [];
+          const messages = [];
+          let row,column;
           try{
             if (err) return reject(err);
             const parseQueries = parse(query.toString());
             const queries = parseQueries.queries;
             const isSelectQueries = parseQueries.isSelectQueries;
-            let resultsAgg: NSDatabase.IResult[] = [];
+            const rows = parseQueries.rows;
+            const columns = parseQueries.columns;
             let binds = {};
             let options = {
               outFormat: this.lib.OUT_FORMAT_OBJECT,   // query result format
@@ -122,10 +128,12 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
             // conn.execute(`ALTER SESSION SET NLS_NUMERIC_CHARACTERS = '.,'`);
             let rowsAffectedAll: number = 0;
             let selectQueryNum: number = 0;
-            const messages = [];
             for (var i =0;i<queries.length;i++) {
               let q = queries[i];
+              // console.log(q);
               currentQuery = q;
+              row = rows[i];
+              column = columns[i];
               if(isSelectQueries[i]){
                 selectQueryNum += 1;
               }
@@ -161,11 +169,33 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
                 results: [{'result':rowsAffectedAll+' rows were affected','executeTime':executeTime.toLocaleTimeString()}],
               });
             }
+            fs.writeFileSync(Oracle_Diagnosis_Path,JSON.stringify({"state":"0","query":query.toString()}));
             return resolve(resultsAgg);
           }catch(err){
             console.log(currentQuery);
             console.log(err);
-            return reject(currentQuery + err);
+            for(var i=0;i<err.offset;i++){
+              ++column;
+              if(currentQuery[i] == '\n'){
+                ++row;
+                column = 1;
+              }
+            }
+            messages.push(err.message+'\n'+'intra-block-posi:('+row+','+column+')');
+            resultsAgg.push(<NSDatabase.IResult>{
+              requestId,
+              resultId: generateId(),
+              connId: this.getId(),
+              cols: [],
+              messages,
+              error: true,
+              rawError: err,
+              query: currentQuery,
+              results: [],
+            });
+            let data = JSON.stringify({"state":"0","query":query.toString(),"currentQuery":currentQuery,"message":err.message,"row":row-1,'column':column-1, "offset":err.offset});
+            fs.writeFileSync(Oracle_Diagnosis_Path,data);
+            return resolve(resultsAgg);
           }finally {
             if (conn) {
               await conn.close();
@@ -173,8 +203,6 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
           }
         });
       });
-    }).catch((reason) => {
-      throw new Error(reason.message);
     });
   }
 

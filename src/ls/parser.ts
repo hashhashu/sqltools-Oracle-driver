@@ -3,13 +3,16 @@
  * minor improvements
  * adapted for oracle and add other things by hurly
  */
-import * as fs from 'fs';
 class QueryParser {
   static parse(query: string, driver: 'pg' | 'mysql' | 'mssql' | 'cql' | 'oracle' = 'oracle'): {queries:  Array<string>,
-    isSelectQueries: Array<boolean>}{
+    isSelectQueries: Array<boolean>, rows: Array<number>, columns: Array<number>}{
     const delimiter: string = ';';
     const queries: Array<string> = [];
     const isSelectQueries: Array<boolean> = [];
+    const rows: Array<number> = [1];
+    const columns: Array<number> = [1];
+    let rowAccu = 1;
+    let columnAccu = 1;
     const flag = true;
     let restOfQuery;
     // macro substitution
@@ -20,25 +23,24 @@ class QueryParser {
     //  return data;
     // }
     // ignore spool
-    query = query.replace(/^\s*spool\s+?/gim,'--spool ');
+    query = query.replace(/^(\s*?)spool\s+?/gim,'$1--spool ');
     // replace exec with call
-    query = query.replace(/^\s*exec\s+/gim,'call ');
+    query = query.replace(/^(\s*?)exec\s+?/gim,'$1call ');
     while (flag) {
       if (restOfQuery == null) {
         restOfQuery = query;
       }
-      const statementAndRest = QueryParser.getStatements(restOfQuery, driver, delimiter);
+      const statementAndRest = QueryParser.getStatements(restOfQuery, driver, delimiter, rowAccu, columnAccu);
 
       const statement = statementAndRest[0];
+      rowAccu = parseInt(statementAndRest[4]);
+      columnAccu = parseInt(statementAndRest[5]);
       let allComment = (statementAndRest[3] == "true")?true:false;
       if (statement != null && statement.trim() != '' && !allComment) {
         queries.push(statement);
-        if(statementAndRest[2] == "true"){
-          isSelectQueries.push(true);
-        }
-        else{
-          isSelectQueries.push(false);
-        }
+        isSelectQueries.push(statementAndRest[2] == "true"?true:false);
+        rows.push(rowAccu);
+        columns.push(columnAccu);
       }
 
       restOfQuery = statementAndRest[1];
@@ -47,7 +49,7 @@ class QueryParser {
       }
     }
 
-    return {queries:queries, isSelectQueries:isSelectQueries};
+    return {queries:queries, isSelectQueries:isSelectQueries, rows:rows, columns:columns};
   }
   static getWord(charArray: Array<string>, index): string{
     let word = '';
@@ -66,7 +68,7 @@ class QueryParser {
     word = word.toLowerCase();
     return word;
   }
-  static getStatements(query: string, driver: string, delimiter: string): Array<string> {
+  static getStatements(query: string, driver: string, delimiter: string, rowAccu: number, columnAccu: number): Array<string> {
     let previousChar: string = null;
     let isInComment: boolean = false;
     let isInString: boolean = false;
@@ -82,7 +84,6 @@ class QueryParser {
     let arrayInclude = ["procedure","function","trigger","package"];
     let arrayExclude = ["database","tablespace","user","table","index","sequence","view"]; //for efficiency
     let isSelectQuery = false;
-
     let resultQueries: Array<string> = [];
     for (let index = 0; index < charArray.length; index++) {
       let char = charArray[index];
@@ -92,6 +93,11 @@ class QueryParser {
 
       if (index < charArray.length) {
         nextChar = charArray[index + 1];
+      }
+      ++columnAccu;
+      if(char == '\n'){
+        rowAccu += 1;
+        columnAccu = 1;
       }
 
       // it's in string, go to next char
@@ -181,37 +187,48 @@ class QueryParser {
 
       // it's a query, continue until you get delimiter hit
       if (
-        (char.toLowerCase() === delimiter.toLowerCase() ||
-        char.toLowerCase() == '/') &&
+        (char.toLowerCase() === delimiter.toLowerCase()) &&
         isInString == false &&
         isInComment == false &&
         isInTag == false
       ) {
         let splittingIndex = index + 1;
-        resultQueries = QueryParser.getQueryParts(query, splittingIndex-1, 1);
+        // continue until hit not \s
+        index = splittingIndex;
+        while(index < charArray.length && /\s/.test(charArray[index])){
+          ++columnAccu;
+          if(charArray[index] == '\n'){
+            ++rowAccu;
+            columnAccu = 1;
+          }
+          ++index;
+        }
+        resultQueries = QueryParser.getQueryParts(query, splittingIndex-1, index);
         break;
       }
     }
     if (resultQueries.length == 0) {
-      if (query != null) {
-        query = query.trim();
-      }
+      // if (query != null) {
+      //   query = query.trim();
+      // }
       resultQueries.push(query, null);
     }
     resultQueries.push(isSelectQuery?"true":"false");
     // is all comment
     resultQueries.push(isFirst?"true":"false");
+    resultQueries.push(rowAccu.toString());
+    resultQueries.push(columnAccu.toString());
 
     return resultQueries;
   }
 
-  static getQueryParts(query: string, splittingIndex: number, numChars: number = 1): Array<string> {
+  static getQueryParts(query: string, splittingIndex: number, nextIndex: number = 1): Array<string> {
     let statement: string = query.substring(0, splittingIndex);
-    const restOfQuery: string = query.substring(splittingIndex + numChars);
+    const restOfQuery: string = query.substring(nextIndex);
     const result: Array<string> = [];
-    if (statement != null) {
-      statement = statement.trim();
-    }
+    // if (statement != null) {
+    //   statement = statement.trim();
+    // }
     result.push(statement);
     result.push(restOfQuery);
     return result;

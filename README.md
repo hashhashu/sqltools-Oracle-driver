@@ -54,10 +54,16 @@ After installing the oracle Driver for SQLTools, you will be able to create conn
    * Statements with only comments are not processed to prevent errors.
    * `create` (or replace) `package` should also be separated with **/**.
    * `with` sentances should also be recognized as `select` sentances.
+
+#### 0.1.6
+* **add detailed error message**
+* fix some issues
+   * sql statement with '/' as division sign are wrongly seperated.
+   * *show table recordes* doesn't support paging
+* adjust the order of completion items.
+* doesn't support for property(pk,fk) anymore for performance
 ### Feedback
 * If you have any questions, feel free to ask and I'll get back to you at the weekend.
 
-### PLANS
-* add hover
 
 Thanks to [vscode-sqltools](https://github.com/mtxr/vscode-sqltools), [node-oracledb](https://github.com/oracle/node-oracledb), [older sqltools oracle driver](https://github.com/mickeypearce/vscode-sqltools/tree/master/packages/drivers/oracle)

@@ -2,7 +2,7 @@
   "name": "sqltools-oracle-driver",
   "displayName": "SQLTools Oracle Driver",
   "description": "SQLTools driver for Oracle",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "engines": {
     "vscode": "^1.42.0"
   },
@@ -27,7 +27,7 @@
     "esbuild:ls": "esbuild ./src/ls/plugin.ts --bundle --external:vscode --platform=node --tsconfig=./tsconfig.json --log-level=info --color=true --format=cjs --target=es2017 --minify --outfile=./out/ls/plugin.js",
     "esbuild": "yarn esbuild:ext && yarn esbuild:ls",
     "copy": "copy package.json ./out/ls",
-    "prepackage": "yarn install && yarn clean && yarn esbuild && yarn copy",
+    "prepackage": "yarn install && yarn clean && yarn esbuild",
     "package": "vsce package --yarn --allow-star-activation",
     "publish": "vsce publish --yarn --allow-star-activation",
     "test-compile": "tsc -p ./",
