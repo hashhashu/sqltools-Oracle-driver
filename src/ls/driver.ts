@@ -14,6 +14,7 @@ export interface PoolConfig{
   autoCommit?: boolean;
   lowerCase?: boolean; //lowcase for completion
   macroFile?: string; //file configured for macro substitution
+  thickMode?: boolean;
 }
 
 
@@ -26,7 +27,7 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
   public readonly deps: typeof AbstractDriver.prototype['deps'] = [{
     type: AbstractDriver.CONSTANTS.DEPENDENCY_PACKAGE,
     name: 'oracledb',
-    version: '5.5.0',
+    version: '6.0.1',
   }];
 
 
@@ -65,6 +66,9 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
       }
       if(this.credentials.oracleOptions.macroFile){
         this.macroFile = this.credentials.oracleOptions.macroFile;
+      }
+      if(this.credentials.oracleOptions.thickMode){
+        this.lib.initOracleClient();
       }
     }
     

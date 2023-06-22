@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { IExtension, IExtensionPlugin, IDriverExtensionApi } from '@sqltools/types';
 import { ExtensionContext } from 'vscode';
 import { DRIVER_ALIASES, Oracle_Diagnosis_Path} from './constants';
-import { Oracle_Log_Path } from './constants';
+// import { Oracle_Log_Path } from './constants';
 import fs from 'fs';
 const { publisher, name} = require('../package.json');
 const driverName = 'Oracle';
@@ -40,14 +40,12 @@ export async function activate(extContext: ExtensionContext): Promise<IDriverExt
     let document = vscode.window.activeTextEditor.document;
     let uri = document.uri;
     if(uri.toString().endsWith('.sql')){
-      fs.appendFileSync(Oracle_Log_Path,JSON.stringify({"path":uri.path}));
+      // fs.appendFileSync(Oracle_Log_Path,JSON.stringify({"path":uri.path}));
       // fs.writeFileSync(Oracle_Log_Path,JSON.stringify({"uri":uri.toString()}));
       let content = JSON.parse(fs.readFileSync(Oracle_Diagnosis_Path).toString());
       if(content.state && content.state == "0"){
         if(content.query){
           let query = content.query;
-          query = query.replace(/^(\s*?)spool\s+?/gim,'$1--spool ');
-          query = query.replace(/^(\s*?)exec\s+?/gim,'$1call ');
 
           let text = document.getText();
           text = text.replace(/^(\s*?)spool\s+?/gim,'$1--spool ');

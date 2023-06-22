@@ -11,12 +11,12 @@ After installing the oracle Driver for SQLTools, you will be able to create conn
 ### Prerequisites
 #### For 64-bit Oracle client libraries
 * Have 64-bit Node.js (version 14 or newer) and npm installed
-* Have the oracledb@5.5.0 (Normally, Upon first use the Oracle driver extension prompts for permission to install the oracledb@5.5.0 package).
+* Have the oracledb@6.0.1 (Normally, Upon first use the Oracle driver extension prompts for permission to install the oracledb@6.0.1 package).
 
 #### For 32-bit Oracle client libraries
 * Have 32-bit Node.js (version 14 or newer) and npm installed(nvm can be used to manage different nodejs versions)
-* Have the oracledb@5.5.0(Because there is no prebuilt binaries corresponding to this platform, you need to install according to the [official instructions](https://node-oracledb.readthedocs.io/en/latest/user_guide/installation.html#node-oracledb-installation-instructions)) in the specific directory(which is used for storing data for vscode-sqltools)(you can use everything to search "vscode-sqltools" to find the directory)
-   * For me, I first download the [tgz File](https://github.com/oracle/node-oracledb/releases/download/v5.5.0/oracledb-src-5.5.0.tgz), then in the **\AppData\Local\vscode-sqltools\Data directory and run `npm install your_dir_path/oracledb-5.5.0.tgz`
+* Have the oracledb@6.0.1(Because there is no prebuilt binaries corresponding to this platform, you need to install according to the [official instructions](https://node-oracledb.readthedocs.io/en/latest/user_guide/installation.html#node-oracledb-installation-instructions)) in the specific directory(which is used for storing data for vscode-sqltools)(you can use everything to search "vscode-sqltools" to find the directory)
+   * For me, I first download the [tgz File](https://github.com/oracle/node-oracledb/releases/download/v6.0.1/oracledb-src-6.0.1.tgz), then in the **\AppData\Local\vscode-sqltools\Data directory and run `npm install your_dir_path/oracledb-6.0.1.tgz`
 
 
 ### Installation
@@ -62,6 +62,11 @@ After installing the oracle Driver for SQLTools, you will be able to create conn
    * *show table recordes* doesn't support paging
 * adjust the order of completion items.
 * doesn't support for property(pk,fk) anymore for performance
+
+#### 0.1.7
+* update oracledb to 6.0.1 to support thin mode
+* add option 'thickmode' to support thick mode in this version(default is thin mode)
+* remove unessassary log code
 ### Feedback
 * If you have any questions, feel free to ask and I'll get back to you at the weekend.
 

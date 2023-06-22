@@ -57,6 +57,11 @@
             "type": "boolean",
             "default": false,
             "title": "lowerCase for completion"
+        },
+        "thickMode": {
+          "type": "boolean",
+          "default": false,
+          "title": "use thick mode"
         }
       }
     }
