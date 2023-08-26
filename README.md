@@ -67,6 +67,10 @@ After installing the oracle Driver for SQLTools, you will be able to create conn
 * update oracledb to 6.0.1 to support thin mode
 * add option 'thickmode' to support thick mode in this version(default is thin mode)
 * remove unessassary log code
+
+#### 0.1.8
+* add Support for DBMS_OUTPUT
+
 ### Feedback
 * If you have any questions, feel free to ask and I'll get back to you at the weekend.
 

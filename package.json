@@ -2,7 +2,7 @@
   "name": "sqltools-oracle-driver",
   "displayName": "SQLTools Oracle Driver",
   "description": "SQLTools driver for Oracle",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "engines": {
     "vscode": "^1.42.0"
   },
@@ -47,7 +47,6 @@
     "mtxr.sqltools"
   ],
   "activationEvents": [
-    "*",
     "onLanguage:sql",
     "onCommand:sqltools.*"
   ],
