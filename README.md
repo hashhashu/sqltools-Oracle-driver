@@ -71,6 +71,10 @@ After installing the oracle Driver for SQLTools, you will be able to create conn
 #### 0.1.8
 * add Support for DBMS_OUTPUT
 
+#### 0.1.9
+* add sql output in the sql console:message windows
+* adjust implementation way for DBMS_OUTPUT according to advice from @a-langer
+
 ### Feedback
 * If you have any questions, feel free to ask and I'll get back to you at the weekend.
 

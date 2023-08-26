@@ -132,26 +132,7 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
             // conn.execute(`ALTER SESSION SET NLS_NUMERIC_CHARACTERS = '.,'`);
             let rowsAffectedAll: number = 0;
             let selectQueryNum: number = 0;
-            let containDbmsOut: boolean = false;
-            const stmts = [
-              `CREATE OR REPLACE TYPE no_dorow AS TABLE OF VARCHAR2(32767)`,
-        
-              `CREATE OR REPLACE FUNCTION no_dofetch RETURN no_dorow PIPELINED IS
-              line VARCHAR2(32767);
-              status INTEGER;
-              BEGIN LOOP
-                DBMS_OUTPUT.GET_LINE(line, status);
-                EXIT WHEN status = 1;
-                PIPE ROW (line);
-              END LOOP;
-              END;`,
-              
-              `BEGIN
-                DBMS_OUTPUT.ENABLE(NULL);
-              END;`,
-
-              `SELECT * FROM TABLE(no_dofetch())`    //clear content
-            ];
+            let DbmsOut: string = '';
             for (var i =0;i<queries.length;i++) {
               let q = queries[i];
               // console.log(q);
@@ -159,29 +140,31 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
               row = rows[i];
               column = columns[i];
 
-
-              //DBMS_OUTPUT
-              if(currentQuery.includes('DBMS_OUTPUT'))
-              {
-                containDbmsOut = true;
-                for (const s of stmts) {
-                  await conn.execute(s);
-                }
-              }
+              await conn.execute(`
+                BEGIN
+                  DBMS_OUTPUT.ENABLE(NULL);
+                END;`);
               
               let res: any = await conn.execute(q,binds,options) || [];
               
               if (res.rowsAffected) {
                 rowsAffectedAll += res.rowsAffected;
-                console.log('rows affected');
               }
               //DBMS_OUTPUT
-              if(containDbmsOut)
-              {
-                res = await conn.execute(
-                  `SELECT * FROM TABLE(no_dofetch())`);
-                  isSelectQueries[i] = true;
-              } 
+              let result;
+              do {
+                result = await conn.execute(
+                  `BEGIN
+                    DBMS_OUTPUT.GET_LINE(:ln, :st);
+                    END;`,
+                    { ln: { dir: this.lib.BIND_OUT, type: this.lib.STRING, maxSize: 32767 },
+                      st: { dir: this.lib.BIND_OUT, type: this.lib.NUMBER }
+                    }
+                );
+                if (result.outBinds.st === 0)
+                  DbmsOut += (result.outBinds.ln + "\n") ;
+              } while (result.outBinds.st === 0); 
+
               if(isSelectQueries[i]){
                 selectQueryNum += 1;
               }
@@ -198,19 +181,19 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
                 });
               }
             }
-              if(rowsAffectedAll>0){
-                messages.push(this.prepareMessage(`${rowsAffectedAll} rows were affected.`));
-                let executeTime = new Date();
-                resultsAgg.push(<NSDatabase.IResult>{
-                  requestId,
-                  resultId: generateId(),
-                  connId: this.getId(),
-                  cols: ['result', 'executeTime'],
-                  messages,
-                  query: 'summary',
-                  results: [{'result':rowsAffectedAll+' rows were affected','executeTime':executeTime.toLocaleTimeString()}],
-                });
-              }
+            if((rowsAffectedAll>0) || (selectQueryNum < queries.length) || (DbmsOut.length > 0)){
+              let executeTime = new Date();
+              resultsAgg.push(<NSDatabase.IResult>{
+                requestId,
+                resultId: generateId(),
+                connId: this.getId(),
+                cols: ['executeTime', 'rowsAffted', 'DBMS_OUTPUT',],
+                messages,
+                query: 'summary',
+                results: [{'rowsAffted':rowsAffectedAll+' rows were affected','DBMS_OUTPUT':DbmsOut,'executeTime':executeTime.toLocaleTimeString()}],
+              });
+            }
+            messages.push(query.toString());
             fs.writeFileSync(Oracle_Diagnosis_Path,JSON.stringify({"state":"0","query":query.toString()}));
             return resolve(resultsAgg);
           }catch(err){
