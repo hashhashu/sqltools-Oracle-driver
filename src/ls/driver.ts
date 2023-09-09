@@ -133,6 +133,12 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
             let rowsAffectedAll: number = 0;
             let selectQueryNum: number = 0;
             let DbmsOut: string = '';
+            // enable dbms_output
+            await conn.execute(`
+              BEGIN
+                DBMS_OUTPUT.ENABLE(NULL);
+              END;`);
+
             for (var i =0;i<queries.length;i++) {
               let q = queries[i];
               // console.log(q);
@@ -140,30 +146,11 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
               row = rows[i];
               column = columns[i];
 
-              await conn.execute(`
-                BEGIN
-                  DBMS_OUTPUT.ENABLE(NULL);
-                END;`);
-              
               let res: any = await conn.execute(q,binds,options) || [];
               
               if (res.rowsAffected) {
                 rowsAffectedAll += res.rowsAffected;
               }
-              //DBMS_OUTPUT
-              let result;
-              do {
-                result = await conn.execute(
-                  `BEGIN
-                    DBMS_OUTPUT.GET_LINE(:ln, :st);
-                    END;`,
-                    { ln: { dir: this.lib.BIND_OUT, type: this.lib.STRING, maxSize: 32767 },
-                      st: { dir: this.lib.BIND_OUT, type: this.lib.NUMBER }
-                    }
-                );
-                if (result.outBinds.st === 0)
-                  DbmsOut += (result.outBinds.ln + "\n") ;
-              } while (result.outBinds.st === 0); 
 
               if(isSelectQueries[i]){
                 selectQueryNum += 1;
@@ -181,6 +168,28 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
                 });
               }
             }
+            // DBMS_OUTPUT
+            let result;
+            do {
+              result = await conn.execute(
+                `BEGIN
+                  DBMS_OUTPUT.GET_LINE(:ln, :st);
+                  END;`,
+                  { ln: { dir: this.lib.BIND_OUT, type: this.lib.STRING, maxSize: 32767 },
+                    st: { dir: this.lib.BIND_OUT, type: this.lib.NUMBER }
+                  }
+              );
+              if (result.outBinds.st === 0)
+                DbmsOut += (result.outBinds.ln + "\n") ;
+            } while (result.outBinds.st === 0);
+            
+            if(DbmsOut.length > 0){
+              let DbmsOuta = DbmsOut;
+              DbmsOuta = '\n-----------------------DBMS_OUTPUT START-----------------------\n' + DbmsOuta;
+              DbmsOuta = DbmsOuta + '-----------------------DBMS_OUTPUT END-----------------------';
+              this.log.info(DbmsOuta);
+            }
+
             if((rowsAffectedAll>0) || (selectQueryNum < queries.length) || (DbmsOut.length > 0)){
               let executeTime = new Date();
               resultsAgg.push(<NSDatabase.IResult>{
