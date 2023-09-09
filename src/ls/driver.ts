@@ -15,6 +15,7 @@ export interface PoolConfig{
   lowerCase?: boolean; //lowcase for completion
   macroFile?: string; //file configured for macro substitution
   thickMode?: boolean;
+  limitPrefetchRows?: boolean;
 }
 
 
@@ -35,6 +36,7 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
   autoCommit = false;
   lowerCase = false;
   macroFile = '';
+  maxRows = 0;
 
   /** if you need to require your lib in runtime and then
    * use `this.lib.methodName()` anywhere and vscode will take care of the dependencies
@@ -69,6 +71,9 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
       }
       if(this.credentials.oracleOptions.thickMode){
         this.lib.initOracleClient();
+      }
+      if(this.credentials.oracleOptions.limitPrefetchRows){
+        this.maxRows = this.credentials.previewLimit;
       }
     }
     
@@ -107,6 +112,11 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
     });
   }
 
+  public calTime(str:string){
+    let date:Date = new Date();
+    this.log.info(str + date.toLocaleTimeString());
+  }
+
   public query: (typeof AbstractDriver)['prototype']['query'] = async (query, opt = {}) => {
     return await this.open().then(async (pool): Promise<NSDatabase.IResult[]> => {
       const { requestId } = opt;
@@ -118,7 +128,9 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
           let row,column;
           try{
             if (err) return reject(err);
+            // this.calTime("before parse");
             const parseQueries = parse(query.toString());
+            // this.calTime("after parse");
             const queries = parseQueries.queries;
             const isSelectQueries = parseQueries.isSelectQueries;
             const rows = parseQueries.rows;
@@ -127,7 +139,8 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
             let options = {
               outFormat: this.lib.OUT_FORMAT_OBJECT,   // query result format
               dmlRowCounts: true,                      //the number of rows affected by each input row
-              autoCommit: this.autoCommit   //control autocommit
+              autoCommit: this.autoCommit,   //control autocommit
+              maxRows: this.maxRows
             };
             // conn.execute(`ALTER SESSION SET NLS_NUMERIC_CHARACTERS = '.,'`);
             let rowsAffectedAll: number = 0;
@@ -168,6 +181,7 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
                 });
               }
             }
+            // this.calTime("after execute");
             // DBMS_OUTPUT
             let result;
             do {
@@ -234,6 +248,7 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
             if (conn) {
               await conn.close();
             }
+            // this.calTime("finally");
           }
         });
       });

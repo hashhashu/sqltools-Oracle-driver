@@ -79,6 +79,12 @@ After installing the oracle Driver for SQLTools, you will be able to create conn
 * move dbms_output out of the loop to improve efficiency
 * add dbms_output in the output channel
 
+#### 0.1.11
+* fix parse bugs when multiple kind of comments(such as /* and --) occure in one line
+* fix parse bugs when / occures inside begin end block
+* add maxRow option to prevent out of memory(when "limit prefetch rows" set true, "Show records default limit" will take effect)
+* fix the activation issue
+
 ### Feedback
 * If you have any questions, feel free to ask and I'll get back to you at the weekend.
 

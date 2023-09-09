@@ -110,7 +110,7 @@ class QueryParser {
       // it's comment, go to next char
       if (
         ((char == '#' && nextChar == ' ') || (char == '-' && nextChar == '-') || (char == '/' && nextChar == '*')) &&
-        isInString == false
+        isInString == false && isInComment == false
       ) {
         isInComment = true;
         commentChar = char;
@@ -192,6 +192,25 @@ class QueryParser {
         isInComment == false &&
         isInTag == false
       ) {
+        // ignore / inside begin end block;
+        if(delimiter == '/')
+        {
+          let closeReal = true;
+          for(let index1 = index+1 ;index1<charArray.length; index1++)
+          {
+            if(charArray[index1] == '\n'){
+              break;
+            }
+            if(!(/\s/.test(charArray[index1]))){
+              closeReal = false;
+              break;
+            }
+          }
+          if(!closeReal){
+            continue;
+          }
+        }
+
         let splittingIndex = index + 1;
         // continue until hit not \s
         index = splittingIndex;
