@@ -196,9 +196,9 @@ class QueryParser {
         if(delimiter == '/')
         {
           let closeReal = true;
-          for(let index1 = index+1 ;index1<charArray.length; index1++)
+          for(let index1 = index-1 ;index1 >=0; index1--)
           {
-            if(charArray[index1] == '\n'){
+            if(charArray[index1] == ';'){
               break;
             }
             if(!(/\s/.test(charArray[index1]))){

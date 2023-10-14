@@ -85,6 +85,11 @@ After installing the oracle Driver for SQLTools, you will be able to create conn
 * add maxRow option to prevent out of memory(when "limit prefetch rows" set true, "Show records default limit" will take effect)
 * fix the activation issue
 
+#### 0.1.12
+* optimize parse code
+* add support for privileged connection
+* pooled connection is replaced with standalone connection
+
 ### Feedback
 * If you have any questions, feel free to ask and I'll get back to you at the weekend.
 

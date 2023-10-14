@@ -16,6 +16,8 @@ export interface PoolConfig{
   macroFile?: string; //file configured for macro substitution
   thickMode?: boolean;
   limitPrefetchRows?: boolean;
+  privilege?: string;
+  pool?: boolean;
 }
 
 
@@ -37,7 +39,11 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
   lowerCase = false;
   macroFile = '';
   maxRows = 0;
-
+  privilege = 'Normal';
+  privilegeMap = {'SYSDBA':this.lib.SYSDBA,'SYSOPER':this.lib.SYSOPER,'SYSASM':this.lib.SYSASM,'SYSBACKUP':this.lib.SYSBACKUP,
+                    'SYSDG':this.lib.SYSDG,'SYSKM':this.lib.SYSKM,'SYSPRELIM':this.lib.SYSPRELIM,'SYSRAC':this.lib.SYSRAC};
+  
+  pooled = true;
   /** if you need to require your lib in runtime and then
    * use `this.lib.methodName()` anywhere and vscode will take care of the dependencies
    * to be installed on a cache folder
@@ -50,7 +56,22 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
 
   public async open() {
     if (this.connection) {
-      return this.connection;
+      if(this.pooled)
+      {
+        return new Promise<OracleDBLib.Connection>((resolve, reject) => {
+          this.lib.getConnection(async (err, conn) => {
+            if (err) return reject(err);
+            await conn.ping(async error => {
+              if (error) return reject(error);
+              this.connection = Promise.resolve(conn);
+              return resolve(this.connection);
+            });
+          });
+        });
+      }
+      else{
+        return this.connection;
+      }
     }
     if(!this.credentials.connectString){
       if (this.credentials.server && this.credentials.port) {
@@ -75,40 +96,77 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
       if(this.credentials.oracleOptions.limitPrefetchRows){
         this.maxRows = this.credentials.previewLimit;
       }
+      if(this.credentials.oracleOptions.privilege){
+        this.privilege = this.credentials.oracleOptions.privilege;
+      }
+      // if(this.credentials.oracleOptions.pool){
+      //   this.pooled = this.credentials.oracleOptions.pool;
+      // }
+      // if(this.privilege != 'Normal'){
+        this.pooled = false;
+      // }
     }
-    
-    const pool = await this.lib.createPool({
-      user: this.credentials.username,
-      password: this.credentials.password,
-      connectString: this.credentials.connectString,
-      poolIncrement : 0,
-      poolMax       : 4,
-      poolMin       : 4
-    });
-
-    return new Promise<OracleDBLib.Pool>((resolve, reject) => {
-      pool.getConnection(async (err, conn) => {
-        if (err) return reject(err);
-        await conn.ping(async error => {
-          if (error) return reject(error);
-          this.connection = Promise.resolve(pool);
-          await conn.close();
-          return resolve(this.connection);
+    if(this.pooled){
+      const pool = await this.lib.createPool({
+        user: this.credentials.username,
+        password: this.credentials.password,
+        connectString: this.credentials.connectString,
+        poolIncrement : 0,
+        poolMax       : 4,
+        poolMin       : 4
+      });
+      return new Promise<OracleDBLib.Connection>((resolve, reject) => {
+        this.lib.getConnection(async (err, conn) => {
+          if (err) return reject(err);
+          await conn.ping(async error => {
+            if (error) return reject(error);
+            this.connection = Promise.resolve(conn);
+            return resolve(this.connection);
+          });
         });
       });
-    });
+    }else{
+      let standAloneConnSetting = {
+        user: this.credentials.username,
+        password: this.credentials.password,
+        connectString: this.credentials.connectString,
+        privilege: this.privilegeMap[this.privilege]
+      }
+      return new Promise<OracleDBLib.Connection>((resolve, reject) => {
+        this.lib.getConnection(standAloneConnSetting,async (err, conn) => {
+          if (err) return reject(err);
+          await conn.ping(async error => {
+            if (error) return reject(error);
+            this.connection = Promise.resolve(conn);
+            return resolve(this.connection);
+          });
+        });
+      });
+    }
   }
 
   public async close() {
     if (!this.connection) return Promise.resolve();
-    return this.connection.then((pool) => {
-      return new Promise<void>((resolve, reject) => {
-        pool.close(10,(err) => {
-          if (err) return reject(err);
-          this.connection = null;
-          return resolve();
+    return this.connection.then((conn) => {
+      if(this.pooled){
+        return new Promise<void>((resolve, reject) => {
+          this.lib.getPool().close(0,(err) => {
+            if (err) return reject(err);
+            this.connection = null;
+            return resolve();
+          });
         });
-      });
+      }
+      else{
+        return new Promise<void>((resolve, reject) => {
+          conn.close((err) => {
+            if (err) return reject(err);
+            this.connection = null;
+            return resolve();
+          });
+        });
+      }
+
     });
   }
 
@@ -118,16 +176,15 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
   }
 
   public query: (typeof AbstractDriver)['prototype']['query'] = async (query, opt = {}) => {
-    return await this.open().then(async (pool): Promise<NSDatabase.IResult[]> => {
+    return await this.open().then(async (conn): Promise<NSDatabase.IResult[]> => {
       const { requestId } = opt;
       return new Promise(async (resolve, reject) => {
-        await pool.getConnection(async (err, conn) => {
           let currentQuery:string;
           let resultsAgg: NSDatabase.IResult[] = [];
           const messages = [];
           let row,column;
           try{
-            if (err) return reject(err);
+            // if (err) return reject(err);
             // this.calTime("before parse");
             const parseQueries = parse(query.toString());
             // this.calTime("after parse");
@@ -152,15 +209,21 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
                 DBMS_OUTPUT.ENABLE(NULL);
               END;`);
 
+              
+            let executeCost = 0;
+
             for (var i =0;i<queries.length;i++) {
               let q = queries[i];
               // console.log(q);
               currentQuery = q;
               row = rows[i];
               column = columns[i];
-
-              let res: any = await conn.execute(q,binds,options) || [];
               
+              let startTime = performance.now();
+              let res: any = await conn.execute(q,binds,options) || [];
+              let endTime = performance.now();
+
+              executeCost += (endTime - startTime);
               if (res.rowsAffected) {
                 rowsAffectedAll += res.rowsAffected;
               }
@@ -203,6 +266,7 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
               DbmsOuta = DbmsOuta + '-----------------------DBMS_OUTPUT END-----------------------';
               this.log.info(DbmsOuta);
             }
+            this.log.info(`cost :${executeCost.toFixed(2)}ms`);
 
             if((rowsAffectedAll>0) || (selectQueryNum < queries.length) || (DbmsOut.length > 0)){
               let executeTime = new Date();
@@ -245,12 +309,11 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
             fs.writeFileSync(Oracle_Diagnosis_Path,data);
             return resolve(resultsAgg);
           }finally {
-            if (conn) {
+            if (conn && this.pooled) {
               await conn.close();
             }
             // this.calTime("finally");
           }
-        });
       });
     });
   }
