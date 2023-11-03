@@ -6,6 +6,7 @@ import parse from './parser';
 import { v4 as generateId } from 'uuid';
 import {Oracle_Diagnosis_Path} from '../constants';
 import fs from 'fs';
+import {performance} from 'perf_hooks'
 
 const toBool = (v: any) => v && (v.toString() === '1' || v.toString().toLowerCase() === 'true' || v.toString().toLowerCase() === 'yes');
 
@@ -70,7 +71,22 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
         });
       }
       else{
-        return this.connection;
+        let standAloneConnSetting = {
+          user: this.credentials.username,
+          password: this.credentials.password,
+          connectString: this.credentials.connectString,
+          privilege: this.privilegeMap[this.privilege]
+        }
+        return new Promise<OracleDBLib.Connection>((resolve, reject) => {
+          this.lib.getConnection(standAloneConnSetting,async (err, conn) => {
+            if (err) return reject(err);
+            await conn.ping(async error => {
+              if (error) return reject(error);
+              this.connection = Promise.resolve(conn);
+              return resolve(this.connection);
+            });
+          });
+        });
       }
     }
     if(!this.credentials.connectString){
@@ -309,7 +325,7 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
             fs.writeFileSync(Oracle_Diagnosis_Path,data);
             return resolve(resultsAgg);
           }finally {
-            if (conn && this.pooled) {
+            if (conn) {
               await conn.close();
             }
             // this.calTime("finally");

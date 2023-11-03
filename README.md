@@ -90,6 +90,10 @@ After installing the oracle Driver for SQLTools, you will be able to create conn
 * add support for privileged connection
 * pooled connection is replaced with standalone connection
 
+#### 0.1.14
+* optimize code for standalone connection
+* fix the issue #14
+
 ### Feedback
 * If you have any questions, feel free to ask and I'll get back to you at the weekend.
 
