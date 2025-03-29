@@ -338,7 +338,6 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
    * Otherwise by default we open and close the connection only
    */
   public async testConnection() {
-    await this.open();
     await this.query('SELECT 1 FROM DUAL', {});
   }
 

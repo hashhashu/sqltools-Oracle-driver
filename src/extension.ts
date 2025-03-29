@@ -37,6 +37,9 @@ export async function activate(extContext: ExtensionContext): Promise<IDriverExt
   diagnosticCollection = vscode.languages.createDiagnosticCollection('sql-oracle');
   extContext.subscriptions.push(diagnosticCollection);
   setInterval(function(e){
+    if(!vscode.window.activeTextEditor){
+      return;
+    }
     let document = vscode.window.activeTextEditor.document;
     let uri = document.uri;
     if(uri.toString().endsWith('.sql')){
