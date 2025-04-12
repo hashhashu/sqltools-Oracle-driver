@@ -94,7 +94,7 @@ After installing the oracle Driver for SQLTools, you will be able to create conn
 * optimize code for standalone connection
 * fix the issue #14
 
-#### 0.1.15
+#### 0.1.16
 * fix the issue #17 and activeTextEditor.document access faild
 
 ### Feedback
