@@ -325,7 +325,7 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
             fs.writeFileSync(Oracle_Diagnosis_Path,data);
             return resolve(resultsAgg);
           }finally {
-            if (conn) {
+            if (conn && requestId) {
               await conn.close();
             }
             // this.calTime("finally");
