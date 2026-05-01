@@ -31,7 +31,7 @@ export default class OracleDriver extends AbstractDriver<OracleDBLib.Pool, PoolC
   public readonly deps: typeof AbstractDriver.prototype['deps'] = [{
     type: AbstractDriver.CONSTANTS.DEPENDENCY_PACKAGE,
     name: 'oracledb',
-    version: '6.0.1',
+    version: '6.10.0',
   }];
 
 

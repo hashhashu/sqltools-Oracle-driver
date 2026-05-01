@@ -2,7 +2,7 @@
   "name": "sqltools-oracle-driver",
   "displayName": "SQLTools Oracle Driver",
   "description": "SQLTools driver for Oracle",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "engines": {
     "vscode": "^1.42.0"
   },
@@ -55,7 +55,7 @@
   "dependencies": {
     "@sqltools/base-driver": "latest",
     "@sqltools/types": "latest",
-    "oracledb": "file:../../oracledb-src-6.0.1.tgz",
+    "oracledb": "file:../../oracledb-src-6.10.0.tgz",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
